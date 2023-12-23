@@ -170,3 +170,5 @@ cython_debug/
 *.txt
 *.mp3
 *.zip
+*.part
+*.ytdl
