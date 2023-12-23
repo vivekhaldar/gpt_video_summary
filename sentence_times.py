@@ -52,14 +52,14 @@ def find_summary_phrase_times(summary_phrases, sentences_from_transcript, word_t
         # This does fuzzy matching using rapidfuzz.
         _, score, matchidx = process.extractOne(phrase_to_search, sentences_from_transcript, scorer=fuzz.WRatio)
         if matchidx is None or score < THRESHOLD_SCORE:
-            print(f'!!!! Could not find [{phrase_to_search}] in the video.')
+            print(f'\n!!!! Could not find [{phrase_to_search}] in the video.\n')
             print(score)
             continue
         sentence_match = sentences_from_transcript[matchidx]
         print(f'## {phrase_to_search} -> {sentence_match}')
         start, end = find_phrase_time(sentence_match, word_timestamp_json)
         if (start, end) == (None, None):
-            print(f'!! Could not find [{phrase_to_search}] in the video.')
+            print(f'!! Could not find [{sentence_match}] in the video.\n')
         else:
             start_end_list.append((start, end))
             print(f'## {phrase_to_search} -> {sentence_match} -> {start} {end}')
@@ -75,16 +75,47 @@ def create_subclips(video_file, start_end_list, output_video_file):
     concatenated_clip.write_videofile(output_video_file)
 
 def find_phrase_time(phrase, json_data):
+    print(f'@@====== {phrase}')
     phrase = string_normalize(phrase)
     words = phrase.split()
+    first_word = string_normalize(words[0])
     if len(words) == 0:
         return None, None
     for i in range(len(json_data)):
-        if json_data[i]['word'].strip().lower() == words[0]:
+        current_word = string_normalize(json_data[i]['word'])
+        # print(f'@@w [{current_word}] / [{first_word}]')
+        if current_word == first_word:
             possible_match = ' '.join(word['word'] for word in json_data[i:i+len(words)])
             possible_match = string_normalize(possible_match)
+            # print(f'@@m {possible_match}')
             if possible_match == phrase:
+                print("FOUND EXACT MATCH")
                 return json_data[i]['start'], json_data[i+len(words)-1]['end']
+            else:
+                # Let's see how close we came, then tweak a little.
+                current_match_ratio = fuzz.ratio(phrase, possible_match)
+                best_possible_match = possible_match
+                best_match_ratio = current_match_ratio
+                best_match_end = i+len(words)-1
+                if (current_match_ratio > 90):
+                    print("FOUND IT CLOSE ENOUGH {current_match_ratio}")
+                    # Try adding one or two words.
+                    for j in range(1, 3):
+                        if i+len(words)+j >= len(json_data):
+                            break
+                        new_possible_match = ' '.join(word['word'] for word in json_data[i:i+len(words)+j])
+                        new_possible_match = string_normalize(new_possible_match)
+                        r = fuzz.ratio(phrase, new_possible_match)
+                        print(f'@@mf {new_possible_match} {r}')
+                        if r > best_match_ratio:
+                            best_match_ratio = r
+                            best_possible_match = new_possible_match
+                            best_match_end = i+len(words)+j-1
+                    if best_match_ratio > current_match_ratio:
+                        print(f'IMPROVED BEST MATCH {best_possible_match} {best_match_ratio}')
+                        return json_data[i]['start'], json_data[best_match_end]['end']
+                # print("NOT FOUND. Going around again.")
+    print("NOT FOUND AT ALL")
     return None, None
 
 if __name__ == '__main__':
