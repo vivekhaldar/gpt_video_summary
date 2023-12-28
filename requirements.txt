@@ -1,0 +1,14 @@
+openai
+rapidfuzz
+
+
+openai-whisper
+stable-ts
+
+moviepy
+
+git+https://github.com/ytdl-org/youtube-dl.git
+llm
+
+# Formatter
+black
