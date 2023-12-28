@@ -167,7 +167,12 @@ cython_debug/
 *.srt
 *.vtt
 *.json
+*.mp3
+*.zip
+*.part
+*.ytdl
 *.txt
+!requirements.txt
 *.mp3
 *.zip
 *.part
